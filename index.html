@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>프리즘 적립금 기안 생성기</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --ink:#1d2733; --sub:#6b7684; --line:#e5e8ec;
+    --accent:#7c4dff; --accent2:#f0ebff; --ok:#0e9f6e; --warn:#b45309; --warnbg:#fff7e6;
+    --ck:#aca094; --ckr:#f59578; --ckc:#657dab; --intrip:#83b7b2; --gome:#333333;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Apple SD Gothic Neo","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+       background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  header.top{padding:16px 22px;background:linear-gradient(100deg,#5b3ecc,#7c4dff);color:#fff}
+  header.top h1{margin:0;font-size:18px;font-weight:800;letter-spacing:-.3px}
+  header.top p{margin:4px 0 0;font-size:12.5px;opacity:.9}
+  .wrap{display:grid;grid-template-columns:410px 1fr;gap:16px;padding:16px;align-items:start}
+  @media(max-width:920px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .card h2{margin:0 0 10px;font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px}
+  .badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;
+         background:var(--accent2);color:var(--accent);font-size:12px;font-weight:800}
+  label.f{display:block;font-size:12px;color:var(--sub);margin:9px 0 3px;font-weight:600}
+  input[type=text],input[type=number],input[type=date],select{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  .drop{border:2px dashed #cfd4dc;border-radius:12px;padding:22px 14px;text-align:center;color:var(--sub);
+        cursor:pointer;transition:.15s;background:#fafbfc}
+  .drop.drag{border-color:var(--accent);background:var(--accent2)}
+  .drop b{color:var(--ink)}
+  .fileinfo{margin-top:10px;font-size:12.5px;color:var(--ink);background:#f0fdf4;border:1px solid #bbf7d0;
+            border-radius:9px;padding:8px 11px;display:none}
+  .fileinfo.show{display:block}
+  .epgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+  .eprow label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin:0 0 3px;font-weight:600}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .opt{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;color:var(--ink)}
+  .opt input{width:auto}
+  .btn{appearance:none;border:0;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:.12s}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:#6a3fe6}
+  .btn.ghost{background:#eef0f3;color:var(--ink)}
+  .btn.ghost:hover{background:#e3e6ea}
+  .btn.sm{padding:6px 11px;font-size:12px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .promo-item{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#faf8ff;
+              border:1px solid # e9e2ff;border:1px solid #e9e2ff;border-radius:9px;padding:7px 10px;margin-top:7px;font-size:12.5px}
+  .promo-item .x{cursor:pointer;color:#b91c1c;font-weight:800;border:0;background:none;font-size:15px}
+  .warn{background:var(--warnbg);border:1px solid #fde68a;color:var(--warn);border-radius:9px;padding:9px 11px;
+        font-size:12.5px;margin-bottom:12px;display:none}
+  .warn.show{display:block}
+  /* preview */
+  .tabs{display:flex;gap:6px;margin-bottom:12px}
+  .tab{padding:8px 15px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:#eef0f3;color:var(--sub)}
+  .tab.on{background:var(--accent);color:#fff}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .view{display:none}
+  .view.on{display:block}
+  .doc h3{font-size:13.5px;font-weight:800;margin:18px 0 7px}
+  .doc h3:first-child{margin-top:0}
+  .doc .lead{font-size:13px;margin:2px 0 0;color:var(--ink)}
+  table.g{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:4px}
+  table.g th,table.g td{border:1px solid #c9ced6;padding:6px 9px;text-align:center;vertical-align:middle}
+  table.g th{background:#f1f3f6;font-weight:700}
+  table.g td.l{text-align:left}
+  .prog-tag{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .empty{color:var(--sub);padding:26px;text-align:center;font-size:13px}
+  .totbar{margin-top:14px;padding:11px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;
+          font-size:13px;font-weight:700;color:#065f46}
+  .note{font-size:11.5px;color:var(--sub);margin-top:8px;line-height:1.6}
+  .mini{font-size:11px;color:var(--sub)}
+  .flash{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1d2733;color:#fff;
+         padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:50}
+  .flash.show{opacity:1}
+  pre.tsv{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:10px;font-size:11.5px;overflow:auto;max-height:230px;
+          white-space:pre;display:none}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>프리즘 적립금 기안 생성기</h1>
+  <p>편성시트(.xlsx)를 넣으면 컬러코드로 프로그램을 인식해 ① 기안 표와 ② 적립금 당첨자 엑셀 표를 자동 생성합니다.</p>
+</header>
+
+<div class="wrap">
+  <!-- ===== LEFT : INPUT ===== -->
+  <div class="left">
+    <div class="card">
+      <h2><span class="badge">1</span> 편성시트 업로드</h2>
+      <div class="drop" id="drop">
+        <div style="font-size:26px">📄</div>
+        <div><b>.xlsx 파일을 끌어놓기</b> 또는 클릭해서 선택</div>
+        <div class="mini" style="margin-top:4px">D·H·L·P·T열(월~금 상품명)의 블록 색상으로 프로그램을 판별합니다</div>
+        <input type="file" id="file" accept=".xlsx" hidden>
+      </div>
+      <div class="fileinfo" id="fileinfo"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="badge">2</span> 프로그램별 시작 EP 번호</h2>
+      <div class="epgrid" id="epgrid">
+        <div class="eprow"><label><span class="dot" style="background:var(--ck)"></span>체크인</label>
+          <input type="number" id="ep_체크인" value="0" min="0"></div>
+        <div class="eprow"><label><span class="dot" style="background:var(--ckr)"></span>체크인 리조트</label>
+          <input type="number" id="ep_체크인 리조트" value="0" min="0"></div>
+        <div class="eprow"><label><span class="dot" style="background:var(--ckc)"></span>체크인 시티</label>
+          <input type="number" id="ep_체크인 시티" value="0" min="0"></div>
+        <div class="eprow"><label><span class="dot" style="background:var(--gome)"></span>체크인 고메</label>
+          <input type="number" id="ep_체크인 고메" value="0" min="0"></div>
+        <div class="eprow"><label><span class="dot" style="background:var(--intrip)"></span>인트립</label>
+          <input type="number" id="ep_인트립" value="0" min="0"></div>
+      </div>
+      <div class="opt"><input type="checkbox" id="showEp" checked><label for="showEp" style="margin:0;font-weight:600;color:var(--ink)">이벤트명에 EP 번호 표시</label></div>
+      <label class="f">기준 연도 (YYYY · 편성시트에서 자동 인식, 필요시 수정)</label>
+      <input type="text" id="yearOverride" placeholder="예: 2026">
+      <div class="mini" style="margin-top:5px">요일은 시트 13행(MON~SUN) 헤더 기준으로 계산하고, 연도는 이 값으로 맞춥니다.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="badge">3</span> 기획전 이벤트 추가 (선택)</h2>
+      <label class="f">카테고리 제목</label>
+      <input type="text" id="p_category" placeholder="예: 소노캄 기획전 이벤트">
+      <label class="f">이벤트 일시</label>
+      <input type="date" id="p_date">
+      <label class="f">이벤트 내용</label>
+      <input type="text" id="p_content" placeholder="예: 소노캄 3행시 이벤트">
+      <button class="btn primary" id="p_add" style="margin-top:11px;width:100%">확인 · 미리보기에 추가</button>
+      <div id="promoList"></div>
+    </div>
+  </div>
+
+  <!-- ===== RIGHT : PREVIEW ===== -->
+  <div class="right">
+    <div class="card">
+      <div class="warn" id="warn"></div>
+      <div class="tabs">
+        <div class="tab on" data-view="doc">① 기안 미리보기</div>
+        <div class="tab" data-view="xls">② 적립금 당첨자 엑셀</div>
+      </div>
+
+      <div class="view on" id="view_doc">
+        <div class="toolbar">
+          <button class="btn primary sm" id="dlDocx">워드(.docx) 다운로드</button>
+          <button class="btn ghost sm" id="copyDoc">표 복사 (문서 붙여넣기)</button>
+          <button class="btn ghost sm" id="copyDocText">텍스트 복사</button>
+        </div>
+        <div id="docBody"><div class="empty">편성시트를 업로드하면 기안 표가 생성됩니다.</div></div>
+      </div>
+
+      <div class="view" id="view_xls">
+        <div class="toolbar">
+          <button class="btn primary sm" id="copyXls">엑셀용 복사 (붙여넣기)</button>
+          <button class="btn ghost sm" id="dlCsv">CSV 다운로드</button>
+          <button class="btn ghost sm" id="toggleTsv">복사 내용 보기</button>
+        </div>
+        <div id="xlsBody"><div class="empty">편성시트를 업로드하면 당첨자 엑셀 표가 생성됩니다.</div></div>
+        <pre class="tsv" id="tsvPre"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<script>
+/* ==================== 편성시트 파서 (의존성 없음) ==================== */
+async function inflateRaw(bytes){
+  const ds=new DecompressionStream('deflate-raw');
+  const stream=new Blob([bytes]).stream().pipeThrough(ds);
+  const buf=await new Response(stream).arrayBuffer();
+  return new Uint8Array(buf);
+}
+async function unzip(arrayBuffer){
+  const dv=new DataView(arrayBuffer), bytes=new Uint8Array(arrayBuffer);
+  let eocd=-1;
+  for(let i=bytes.length-22;i>=0;i--){ if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;} }
+  if(eocd<0) throw new Error('올바른 xlsx 파일이 아닙니다.');
+  const cdCount=dv.getUint16(eocd+10,true); let cdOff=dv.getUint32(eocd+16,true);
+  const files={};
+  for(let n=0;n<cdCount;n++){
+    if(dv.getUint32(cdOff,true)!==0x02014b50) break;
+    const method=dv.getUint16(cdOff+10,true), compSize=dv.getUint32(cdOff+20,true);
+    const fnLen=dv.getUint16(cdOff+28,true), extraLen=dv.getUint16(cdOff+30,true), commentLen=dv.getUint16(cdOff+32,true);
+    const localOff=dv.getUint32(cdOff+42,true);
+    const fn=new TextDecoder().decode(bytes.subarray(cdOff+46,cdOff+46+fnLen));
+    const lfnLen=dv.getUint16(localOff+26,true), lextraLen=dv.getUint16(localOff+28,true);
+    const dataStart=localOff+30+lfnLen+lextraLen;
+    files[fn]={method,comp:bytes.subarray(dataStart,dataStart+compSize)};
+    cdOff+=46+fnLen+extraLen+commentLen;
+  }
+  const out={};
+  for(const fn in files){ const{method,comp}=files[fn];
+    if(method===0) out[fn]=comp; else if(method===8) out[fn]=await inflateRaw(comp); }
+  return out;
+}
+const dec=new TextDecoder();
+function xml(s){ return new DOMParser().parseFromString(s,'application/xml'); }
+function colToNum(l){ let n=0; for(let i=0;i<l.length;i++) n=n*26+(l.charCodeAt(i)-64); return n; }
+function numToCol(n){ let s=''; while(n>0){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26); } return s; }
+// 셀 메모(코멘트)에서 "PD : 이름" 의 영어 이름만 추출 (한글은 무시)
+function pdName(text){
+  if(!text) return '';
+  const lines=String(text).split(/\r?\n/);
+  let seg=lines.find(l=>/PD\s*[:：]/i.test(l));
+  seg = seg ? seg.replace(/^.*?PD\s*[:：]\s*/i,'') : String(text);
+  const m=seg.match(/[A-Za-z][A-Za-z.'’-]*/);
+  return m?m[0]:'';
+}
+function splitRef(r){ const m=r.match(/^([A-Z]+)(\d+)$/); return {col:colToNum(m[1]),row:parseInt(m[2],10)}; }
+function serialToDate(s){ return new Date(Date.UTC(1899,11,30)+Math.floor(s)*86400000); }
+
+async function parseWorkbook(arrayBuffer){
+  const files=await unzip(arrayBuffer);
+  const shared=[];
+  if(files['xl/sharedStrings.xml']){
+    const doc=xml(dec.decode(files['xl/sharedStrings.xml']));
+    for(const si of doc.getElementsByTagName('si')){ let t=''; for(const n of si.getElementsByTagName('t')) t+=n.textContent; shared.push(t); }
+  }
+  // 테마 색 해석 (예: 체크인 고메 = 검정 = theme 1)
+  const themeColors=[];
+  if(files['xl/theme/theme1.xml']){
+    const tdoc=xml(dec.decode(files['xl/theme/theme1.xml']));
+    const scheme=tdoc.getElementsByTagName('a:clrScheme')[0]||tdoc.getElementsByTagName('clrScheme')[0];
+    if(scheme) for(const child of scheme.children){
+      const el=child.children[0]; let rgb=null;
+      if(el){ const last=el.getAttribute('lastClr'), val=el.getAttribute('val');
+        if(last) rgb=last; else if(val&&/^[0-9A-Fa-f]{6}$/.test(val)) rgb=val; }
+      themeColors.push(rgb?rgb.toUpperCase():null);
+    }
+  }
+  const themeMap=[1,0,3,2,4,5,6,7,8,9,10,11]; // Excel fgColor theme index -> clrScheme 순서
+  const themeToRgb=idx=>{ const s=(themeMap[idx]!=null?themeMap[idx]:idx); return themeColors[s]||null; };
+
+  const fills=[], styleFill=[];
+  if(files['xl/styles.xml']){
+    const doc=xml(dec.decode(files['xl/styles.xml']));
+    const fillsEl=doc.getElementsByTagName('fills')[0];
+    if(fillsEl) for(const f of fillsEl.getElementsByTagName('fill')){
+      const pf=f.getElementsByTagName('patternFill')[0]; let rgb=null;
+      if(pf&&pf.getAttribute('patternType')&&pf.getAttribute('patternType')!=='none'){
+        const fg=pf.getElementsByTagName('fgColor')[0];
+        if(fg){
+          if(fg.getAttribute('rgb')) rgb=fg.getAttribute('rgb').toUpperCase();
+          else if(fg.getAttribute('theme')!=null){ const tr=themeToRgb(parseInt(fg.getAttribute('theme'),10)); if(tr) rgb='FF'+tr; }
+        }
+      }
+      fills.push(rgb);
+    }
+    const cx=doc.getElementsByTagName('cellXfs')[0];
+    if(cx) for(const xf of cx.getElementsByTagName('xf')){ const fid=parseInt(xf.getAttribute('fillId')||'0',10); styleFill.push(fills[fid]||null); }
+  }
+  let sheetPath='xl/worksheets/sheet1.xml';
+  if(!files[sheetPath]){ const k=Object.keys(files).find(k=>/^xl\/worksheets\/sheet\d+\.xml$/.test(k)); if(k) sheetPath=k; }
+  const sheetDoc=xml(dec.decode(files[sheetPath]));
+  const grid={}; let maxRow=0;
+  for(const c of sheetDoc.getElementsByTagName('c')){
+    const ref=c.getAttribute('r'); if(!ref) continue;
+    const {row,col}=splitRef(ref);
+    const t=c.getAttribute('t'), s=c.getAttribute('s');
+    const vEl=c.getElementsByTagName('v')[0], isEl=c.getElementsByTagName('is')[0];
+    let value=null;
+    if(t==='s'&&vEl) value=shared[parseInt(vEl.textContent,10)];
+    else if(t==='inlineStr'&&isEl){ let tx=''; for(const n of isEl.getElementsByTagName('t')) tx+=n.textContent; value=tx; }
+    else if(vEl){ const raw=vEl.textContent; value=(t==='str'||t==='b')?raw:(raw===''?null:Number(raw)); }
+    const fill=s!=null?(styleFill[parseInt(s,10)]||null):null;
+    if(!grid[row]) grid[row]={}; grid[row][col]={v:value,fill};
+    if(row>maxRow) maxRow=row;
+  }
+  // 셀 메모(코멘트) 파싱 : ref -> text
+  const comments={};
+  for(const fn in files){
+    if(/^xl\/comments\d+\.xml$/.test(fn)){
+      const doc=xml(dec.decode(files[fn]));
+      for(const cm of doc.getElementsByTagName('comment')){
+        const ref=cm.getAttribute('ref'); if(!ref) continue;
+        let t=''; const te=cm.getElementsByTagName('text')[0];
+        if(te) for(const tn of te.getElementsByTagName('t')) t+=tn.textContent;
+        comments[ref]=t;
+      }
+    }
+  }
+  return {grid,maxRow,comments};
+}
+
+/* ==================== 에피소드 추출 ==================== */
+const PROGRAM_TARGETS=[
+  {program:'체크인',       hexes:['ACA094','ACA064']},
+  {program:'체크인 리조트', hexes:['F59578']},
+  {program:'체크인 시티',   hexes:['657DAB']},
+  {program:'인트립',       hexes:['83B7B2']},
+  {program:'체크인 고메',   hexes:['000000']},
+];
+function hexRGB(h){ return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function colorToProgram(argb){
+  if(!argb) return null;
+  const hex=(argb.length===8?argb.slice(2):argb).toUpperCase();
+  if(!/^[0-9A-F]{6}$/.test(hex)) return null;
+  const [r,g,b]=hexRGB(hex); let best=null,bestD=Infinity;
+  for(const t of PROGRAM_TARGETS) for(const th of t.hexes){
+    const [r2,g2,b2]=hexRGB(th); const d=Math.sqrt((r-r2)**2+(g-g2)**2+(b-b2)**2);
+    if(d<bestD){bestD=d;best=t.program;}
+  }
+  return bestD<=40?best:null;
+}
+const NAME_COLS=[4,8,12,16,20];
+function extractEpisodes({grid,maxRow,comments}){
+  comments=comments||{};
+  const cell=(r,c)=>(grid[r]&&grid[r][c])?grid[r][c]:null;
+  const num=(r,c)=>{const x=cell(r,c);return (x&&typeof x.v==='number')?x.v:null;};
+  const timeRows=[], dateRows=[];
+  for(let r=1;r<=maxRow;r++){
+    const b=num(r,2); if(b!=null&&b>0&&b<1) timeRows.push({row:r,hour:Math.round(b*24)});
+    const c=num(r,3); if(c!=null&&c>=40000&&c<50000) dateRows.push(r);
+  }
+  const episodes=[];
+  for(const{row,hour} of timeRows){
+    if(hour===12) continue;
+    let dr=null; for(const d of dateRows){ if(d<=row) dr=d; }
+    if(dr==null) continue;
+    for(const nc of NAME_COLS){
+      const cc=cell(row,nc); if(!cc) continue;
+      const program=colorToProgram(cc.fill); if(!program) continue;
+      const serial=num(dr,nc-1); const date=serial!=null?serialToDate(serial):null;
+      let name=(cc.v==null)?null:String(cc.v).replace(/\s*\n\s*/g,' ').trim(); if(name==='') name=null;
+      // 셀 텍스트가 "프로그램명 - 상품명" 형태면 프로그램명 접두어 제거 (예: 체크인 고메 - 웨스틴 조선 서울)
+      if(name && name.startsWith(program)){ name=name.slice(program.length).replace(/^[\s\-–—:_]+/,'').trim()||null; }
+      // 담당자: 상품명 열 +2 (F/J/N/R/V) 셀의 메모 속 "PD : 이름" 에서 영어 이름만 추출 (한글 이름은 무시)
+      const host=pdName(comments[numToCol(nc+2)+row])||null;
+      episodes.push({date,hour,program,name,host});
+    }
+  }
+  episodes.sort((a,b)=>(a.date?.getTime()||9e15)-(b.date?.getTime()||9e15)||a.hour-b.hour);
+  return episodes;
+}
+
+/* ==================== 상태 & 렌더 ==================== */
+const WD=['일','월','화','수','목','금','토'];
+const LIVE_PROGRAMS=['체크인','체크인 시티','체크인 리조트','인트립'];
+const CONTENT_PROGRAMS=['체크인','체크인 시티','체크인 리조트','체크인 고메'];
+const state={episodes:[],promos:[],declaredYM:null,year:null,fileName:null};
+
+function $(id){return document.getElementById(id);}
+function timeKo(h){ return h<12?`오전 ${h}시`:(h===12?`오후 12시`:`오후 ${h-12}시`); }
+function dparts(d,year){ const y=year||d.getUTCFullYear(); const m=d.getUTCMonth()+1, day=d.getUTCDate();
+  const wd=WD[new Date(Date.UTC(y,d.getUTCMonth(),d.getUTCDate())).getUTCDay()]; return {y,m,day,wd}; }
+function ymOf(d,year){ const p=dparts(d,year); return `${p.y}-${String(p.m).padStart(2,'0')}`; }
+function dateKo(d,year){ const p=dparts(d,year); return `${p.y}년 ${p.m}월 ${p.day}일 (${p.wd})`; }
+function dateShort(d,year){ const p=dparts(d,year); return `${p.m}. ${p.day} (${p.wd})`; }
+function resolveYear(){ const v=($('yearOverride').value||'').trim(); if(/^\d{4}$/.test(v)) return +v; return state.year||null; }
+function nfmt(n){ return n.toLocaleString('ko-KR'); }
+function progColorVar(p){ return p==='체크인'?'var(--ck)':p==='체크인 리조트'?'var(--ckr)':p==='체크인 시티'?'var(--ckc)':p==='인트립'?'var(--intrip)':'var(--gome)'; }
+
+function assignEp(){
+  const showEp=$('showEp').checked;
+  const starts={};
+  for(const p of ['체크인','체크인 리조트','체크인 시티','체크인 고메','인트립']){
+    const v=parseInt($(`ep_${p}`).value,10); starts[p]=isNaN(v)?null:v;
+  }
+  const counters={...starts};
+  // episodes already globally sorted; assign per program in order
+  for(const e of state.episodes){
+    if(counters[e.program]==null){ e.ep=null; }
+    else { e.ep=counters[e.program]; counters[e.program]++; }
+  }
+  return showEp;
+}
+function contentName(e,showEp){
+  const nm=e.name||'미정';
+  if(showEp&&e.ep!=null) return `${e.program} EP.${e.ep} ${nm}`;
+  return `${e.program} ${nm}`;
+}
+
+function render(){
+  const yr=resolveYear();
+  const showEp=assignEp();
+  renderDoc(showEp,yr);
+  renderXls(showEp,yr);
+}
+
+/* ---------- 기안 ---------- */
+// 기안 공통 데이터 모델 (미리보기 HTML + 워드 .docx 가 동일 소스 사용)
+function buildDocModel(showEp,ov){
+  const eps=state.episodes;
+  if(!eps.length && !state.promos.length) return null;
+  const liveCk=eps.filter(e=>['체크인','체크인 시티','체크인 리조트'].includes(e.program));
+  const liveIt=eps.filter(e=>e.program==='인트립');
+  const content=eps.filter(e=>CONTENT_PROGRAMS.includes(e.program));
+  const monthLabel = state.declaredYM
+    ? (()=>{const[a,b]=state.declaredYM.split('-');return `${a}년 ${+b}월`;})()
+    : (()=>{const f=eps.find(e=>e.date);return f?`${ov||f.date.getUTCFullYear()}년 ${f.date.getUTCMonth()+1}월`:'';})();
+  const when=e=>(e.date?dateKo(e.date,ov):'-')+' '+timeKo(e.hour);
+  const liveRow=e=>({cells:[when(e), contentName(e,showEp), e.name?'14F Lounge':'-'], prog:e.program});
+  const contentRow=e=>({cells:[when(e), contentName(e,showEp)], prog:e.program});
+
+  const promoGroups=[], gmap={};
+  state.promos.forEach(p=>{ if(!gmap[p.category]){ gmap[p.category]={category:p.category,items:[]}; promoGroups.push(gmap[p.category]); } gmap[p.category].items.push(p); });
+
+  const summaryRows=[];
+  if(liveCk.length||liveIt.length) summaryRows.push({cells:['라이브 적립금','10,000','10','100,000']});
+  if(content.length) summaryRows.push({cells:['사전댓글 적립금','10,000','10','100,000']});
+  promoGroups.forEach(g=>summaryRows.push({cells:[`${g.category} 적립금`,'10,000','10','100,000']}));
+
+  const W3=[2600,5126,1300], W2=[2600,6426], W4=[2426,2200,2200,2200];
+  const blocks=[];
+  blocks.push({t:'h',text:'1. 추진 개요'});
+  blocks.push({t:'p',text:`${monthLabel} 프리즘 적립금 이벤트 사전 기안의 건`});
+  blocks.push({t:'h',text:'2. 추진 목적'});
+  blocks.push({t:'p',text:'라이브 방송 참여 전환율 증대 및 시청자 댓글 작성 독려'});
+  let sec=3;
+  blocks.push({t:'h',text:`${sec++}. 체크인 피크타임 이벤트 진행 일시`});
+  blocks.push(liveCk.length?{t:'table',head:['일시','내용','장소'],widths:W3,rows:liveCk.map(liveRow),contentCol:1}:{t:'empty'});
+  blocks.push({t:'h',text:`${sec++}. 인트립 피크타임 이벤트 진행 일시`});
+  blocks.push(liveIt.length?{t:'table',head:['일시','내용','장소'],widths:W3,rows:liveIt.map(liveRow),contentCol:1}:{t:'empty'});
+  blocks.push({t:'h',text:`${sec++}. 사전댓글 이벤트 진행 일시`});
+  blocks.push(content.length?{t:'table',head:['일시','내용'],widths:W2,rows:content.map(contentRow),contentCol:1}:{t:'empty'});
+  promoGroups.forEach(g=>{
+    blocks.push({t:'h',text:`${sec++}. ${g.category} 진행 일시`});
+    const rows=g.items.map(p=>{ const dd=p.date?new Date(p.date+'T00:00:00Z'):null; return {cells:[dd?dateKo(dd):'(일시 미정)', p.content]}; });
+    blocks.push({t:'table',head:['일시','내용'],widths:W2,rows,contentCol:1});
+  });
+  blocks.push({t:'h',text:`${sec++}. 회차당 지급 예상 금액`});
+  blocks.push({t:'table',head:['','1인당 지급 금액(원)','대상 인원 예상 (명)','총 지급 예상 금액 (원)'],widths:W4,rows:summaryRows,leftCols:[0]});
+  blocks.push({t:'h',text:`${sec++}. 지급 요청 시기`});
+  blocks.push({t:'p',text:'각 이벤트 종료 후 3일 이내 지급'});
+  blocks.push({t:'note',text:'* 편성 변경 / 취소 시, 댓글 등록\n* 편성 추가 시, 별도의 적립금 기안 상신 예정'});
+  const totalEvents=liveCk.length+liveIt.length+content.length+state.promos.length;
+  return {monthLabel,blocks,totalEvents};
+}
+
+function docModelToHtml(model){
+  let html='<div class="doc">';
+  for(const b of model.blocks){
+    if(b.t==='h') html+=`<h3>${escapeHtml(b.text)}</h3>`;
+    else if(b.t==='p') html+=`<p class="lead">${escapeHtml(b.text)}</p>`;
+    else if(b.t==='note') html+=`<p class="note">${escapeHtml(b.text).replace(/\n/g,'<br>')}</p>`;
+    else if(b.t==='empty') html+='<p class="mini">해당 없음</p>';
+    else if(b.t==='table'){
+      html+='<table class="g"><tr>'+b.head.map(h=>`<th>${escapeHtml(h)}</th>`).join('')+'</tr>';
+      for(const r of b.rows){
+        html+='<tr>'+r.cells.map((c,i)=>{
+          const left=(b.contentCol===i)||(b.leftCols&&b.leftCols.includes(i));
+          const dot=(b.contentCol===i&&r.prog)?`<span class="prog-tag" style="background:${progColorVar(r.prog)}"></span>`:'';
+          return `<td${left?' class="l"':''}>${dot}${escapeHtml(c)}</td>`;
+        }).join('')+'</tr>';
+      }
+      html+='</table>';
+    }
+  }
+  return html+'</div>';
+}
+
+function renderDoc(showEp,ov){
+  const model=buildDocModel(showEp,ov);
+  state.docModel=model;
+  if(!model){ $('docBody').innerHTML='<div class="empty">편성시트를 업로드하면 기안 표가 생성됩니다.</div>'; return; }
+  let html=docModelToHtml(model);
+  html+=`<div class="totbar">총 이벤트 ${model.totalEvents}건 · 당첨자 ${nfmt(model.totalEvents*10)}명 · 예상 총 지급액 ${nfmt(model.totalEvents*100000)}원</div>`;
+  $('docBody').innerHTML=html;
+}
+
+/* ---------- 엑셀 ---------- */
+function buildXlsRows(showEp,ov){
+  const rows=[]; // {ym, date(str), time, name, w, per, tot, _sort}
+  for(const e of state.episodes){
+    const ym=e.date?ymOf(e.date,ov):'';
+    const ds=e.date?dateShort(e.date,ov):'-';
+    const nm=contentName(e,showEp);
+    if(LIVE_PROGRAMS.includes(e.program)){
+      rows.push({ym,date:ds,time:String(e.hour).padStart(2,'0')+':00',name:nm+' 피크타임 이벤트',owner:e.host||'',
+                 _d:e.date?e.date.getTime():9e15,_t:0,_h:e.hour});
+    }
+    if(CONTENT_PROGRAMS.includes(e.program)){
+      rows.push({ym,date:ds,time:'-',name:nm+' 사전 댓글 이벤트',owner:'Jessica',
+                 _d:e.date?e.date.getTime():9e15,_t:1,_h:e.hour});
+    }
+  }
+  for(const p of state.promos){
+    const dd=p.date?new Date(p.date+'T00:00:00Z'):null;
+    const ym=dd?ymOf(dd):'';
+    const ds=dd?dateShort(dd):'-';
+    rows.push({ym,date:ds,time:'-',name:p.content,owner:'',_d:dd?dd.getTime():9e15,_t:2,_h:99});
+  }
+  rows.sort((a,b)=>a._d-b._d||a._t-b._t||a._h-b._h);
+  return rows;
+}
+function renderXls(showEp,ov){
+  const rows=buildXlsRows(showEp,ov);
+  if(!rows.length){ $('xlsBody').innerHTML='<div class="empty">편성시트를 업로드하면 당첨자 엑셀 표가 생성됩니다.</div>'; $('tsvPre').textContent=''; return; }
+  let html=`<table class="g"><tr><th>지급대상월</th><th>편성일</th><th>편성 시간</th><th>이벤트명</th><th>대상인원</th><th>인당 지급액</th><th>지급 총액</th><th>담당자</th></tr>`;
+  for(const r of rows){
+    html+=`<tr><td>${r.ym}</td><td>${escapeHtml(r.date)}</td><td>${r.time}</td><td class="l">${escapeHtml(r.name)}</td><td>10</td><td>10,000</td><td>100,000</td><td>${escapeHtml(r.owner||'')}</td></tr>`;
+  }
+  html+=`</table>`;
+  html+=`<div class="totbar">총 ${rows.length}행 · 당첨자 ${nfmt(rows.length*10)}명 · 예상 총 지급액 ${nfmt(rows.length*100000)}원</div>`;
+  $('xlsBody').innerHTML=html;
+  // TSV for copy
+  const header=['지급대상월','편성일','편성 시간','이벤트명','대상인원','인당 지급액','지급 총액','담당자'];
+  const tsv=[header.join('\t')].concat(rows.map(r=>[r.ym,r.date,r.time,r.name,'10','10,000','100,000',r.owner||''].join('\t'))).join('\n');
+  $('tsvPre').textContent=tsv;
+  $('tsvPre').dataset.csv=[header.join(',')].concat(rows.map(r=>[r.ym,r.date,r.time,'"'+r.name.replace(/"/g,'""')+'"','10','10000','100000',r.owner||''].join(','))).join('\n');
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ==================== 워드(.docx) 생성 (라이브러리 없음) ==================== */
+const CRC_TABLE=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
+function crc32(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=CRC_TABLE[(c^b[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function u16(v){ return new Uint8Array([v&255,(v>>8)&255]); }
+function u32(v){ return new Uint8Array([v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255]); }
+function concatBytes(arrs){ let n=0; for(const a of arrs) n+=a.length; const o=new Uint8Array(n); let p=0; for(const a of arrs){ o.set(a,p); p+=a.length; } return o; }
+function zipStore(entries){ // 무압축(store) ZIP
+  const enc=new TextEncoder(); const chunks=[]; const central=[]; let offset=0;
+  for(const e of entries){
+    const name=enc.encode(e.name), data=e.data, crc=crc32(data);
+    const lh=concatBytes([u32(0x04034b50),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),name]);
+    chunks.push(lh,data);
+    central.push(concatBytes([u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name]));
+    offset+=lh.length+data.length;
+  }
+  const cStart=offset; let cSize=0; for(const c of central){ chunks.push(c); cSize+=c.length; }
+  chunks.push(concatBytes([u32(0x06054b50),u16(0),u16(0),u16(central.length),u16(central.length),u32(cSize),u32(cStart),u16(0)]));
+  return concatBytes(chunks);
+}
+function xesc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function wPara(text,{bold=false,size=20,align}={}){
+  const rpr=(bold?'<w:b/>':'')+`<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>`;
+  const runs=String(text).split('\n').map((ln,i)=>(i?'<w:br/>':'')+`<w:t xml:space="preserve">${xesc(ln)}</w:t>`).join('');
+  return `<w:p><w:pPr>${align?`<w:jc w:val="${align}"/>`:''}${bold?'<w:spacing w:before="160" w:after="60"/>':'<w:spacing w:after="40"/>'}<w:rPr>${rpr}</w:rPr></w:pPr><w:r><w:rPr>${rpr}</w:rPr>${runs}</w:r></w:p>`;
+}
+function wCell(text,{bold=false,align='center',w=2000,shaded=false}={}){
+  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${shaded?'<w:shd w:val="clear" w:color="auto" w:fill="F1F3F6"/>':''}<w:vAlign w:val="center"/></w:tcPr>${wPara(text,{bold,size:18,align})}</w:tc>`;
+}
+function wTable(b){
+  const widths=b.widths||b.head.map(()=>Math.floor(9026/b.head.length));
+  const borders='<w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(s=>`<w:${s} w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>`).join('')+'</w:tblBorders>';
+  const grid='<w:tblGrid>'+widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')+'</w:tblGrid>';
+  let rows='<w:tr>'+b.head.map((h,i)=>wCell(h,{bold:true,align:'center',w:widths[i],shaded:true})).join('')+'</w:tr>';
+  for(const r of b.rows){
+    rows+='<w:tr>'+r.cells.map((c,i)=>{ const left=(b.contentCol===i)||(b.leftCols&&b.leftCols.includes(i)); return wCell(c,{align:left?'left':'center',w:widths[i]}); }).join('')+'</w:tr>';
+  }
+  return `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblLayout w:type="fixed"/>${borders}</w:tblPr>${grid}${rows}</w:tbl>`;
+}
+function buildDocumentXml(model){
+  let body='';
+  for(const b of model.blocks){
+    if(b.t==='h') body+=wPara(b.text,{bold:true,size:24});
+    else if(b.t==='p') body+=wPara(b.text,{size:22});
+    else if(b.t==='note') body+=wPara(b.text,{size:18});
+    else if(b.t==='empty') body+=wPara('해당 없음',{size:18});
+    else if(b.t==='table'){ body+=wTable(b); body+=wPara('',{size:10}); }
+  }
+  const sect='<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+sect+'</w:body></w:document>';
+}
+const DOCX_CT='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+const DOCX_RELS='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+function downloadDocx(){
+  if(!state.docModel){ flash('먼저 편성시트를 업로드하세요.'); return; }
+  const enc=new TextEncoder();
+  const zip=zipStore([
+    {name:'[Content_Types].xml', data:enc.encode(DOCX_CT)},
+    {name:'_rels/.rels', data:enc.encode(DOCX_RELS)},
+    {name:'word/document.xml', data:enc.encode(buildDocumentXml(state.docModel))},
+  ]);
+  const blob=new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const ym=state.declaredYM||''; a.download=`${ym?ym+' ':''}프리즘 적립금 이벤트 사전 기안.docx`;
+  a.click(); flash('워드(.docx) 문서를 다운로드했습니다.');
+}
+
+/* ==================== 파일 처리 ==================== */
+async function handleBuffer(buf){
+  try{
+    const wb=await parseWorkbook(buf);
+    state.episodes=extractEpisodes(wb);
+    // declared 년월 : C5(month) D5(year)
+    const g=wb.grid; const mv=g[5]&&g[5][3]?g[5][3].v:null; const yv=g[5]&&g[5][4]?g[5][4].v:null;
+    state.declaredYM=(yv&&mv)?`${yv}-${String(mv).padStart(2,'0')}`:null;
+    state.year=(typeof yv==='number')?yv:(state.episodes.find(e=>e.date)?.date.getUTCFullYear()||null);
+    if(state.year && !($('yearOverride').value||'').trim()) $('yearOverride').value=state.year;
+    const fi=$('fileinfo'); fi.classList.add('show');
+    const cnt={}; state.episodes.forEach(e=>cnt[e.program]=(cnt[e.program]||0)+1);
+    const breakdown=Object.entries(cnt).map(([k,v])=>`${k} ${v}`).join(' · ')||'인식된 프로그램 없음';
+    fi.innerHTML=`✅ <b>${escapeHtml(state.fileName||'파일')}</b> — 에피소드 ${state.episodes.length}건<br><span class="mini">${breakdown}</span>`;
+    render();
+  }catch(err){
+    const fi=$('fileinfo'); fi.classList.add('show'); fi.style.background='#fef2f2'; fi.style.borderColor='#fecaca';
+    fi.textContent='❌ 읽기 실패: '+err.message;
+  }
+}
+function readFile(file){
+  if(!file) return;
+  state.fileName=file.name;
+  const rd=new FileReader();
+  rd.onload=()=>handleBuffer(rd.result);
+  rd.readAsArrayBuffer(file);
+}
+
+/* ==================== 이벤트 바인딩 ==================== */
+const drop=$('drop'), fileInput=$('file');
+drop.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>readFile(e.target.files[0]));
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
+drop.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) readFile(f); });
+
+['ep_체크인','ep_체크인 리조트','ep_체크인 시티','ep_체크인 고메','ep_인트립','showEp','yearOverride']
+  .forEach(id=>{ const el=$(id); el.addEventListener('input',render); el.addEventListener('change',render); });
+
+$('p_add').addEventListener('click',()=>{
+  const category=$('p_category').value.trim(), content=$('p_content').value.trim();
+  if(!category){ flash('카테고리 제목을 입력하세요.'); return; }
+  if(!content){ flash('이벤트 내용을 입력하세요.'); return; }
+  state.promos.push({category,date:$('p_date').value||null,content});
+  $('p_content').value='';
+  renderPromoList(); render(); flash('기획전 이벤트가 추가되었습니다.');
+});
+function renderPromoList(){
+  const box=$('promoList'); if(!state.promos.length){ box.innerHTML=''; return; }
+  box.innerHTML=state.promos.map((p,i)=>`<div class="promo-item"><span>${escapeHtml(p.category)} · ${escapeHtml(p.content)} <span class="mini">${p.date?'('+p.date+')':'(일시 미정)'}</span></span><button class="x" data-i="${i}">×</button></div>`).join('');
+  box.querySelectorAll('.x').forEach(b=>b.addEventListener('click',()=>{ state.promos.splice(+b.dataset.i,1); renderPromoList(); render(); }));
+}
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on'); $('view_'+t.dataset.view).classList.add('on');
+}));
+
+/* ---- copy / download ---- */
+function flash(msg){ const f=$('flash'); f.textContent=msg; f.classList.add('show'); setTimeout(()=>f.classList.remove('show'),1600); }
+async function copyText(txt){ try{ await navigator.clipboard.writeText(txt); return true; }catch(e){
+  const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select();
+  try{document.execCommand('copy');}catch(_){} ta.remove(); return true; } }
+
+$('copyXls').addEventListener('click',async()=>{ const t=$('tsvPre').textContent; if(!t){flash('먼저 편성시트를 업로드하세요.');return;} await copyText(t); flash('엑셀용 표를 복사했습니다. 시트에 붙여넣기 하세요.'); });
+$('toggleTsv').addEventListener('click',()=>{ const p=$('tsvPre'); p.style.display=p.style.display==='block'?'none':'block'; });
+$('dlCsv').addEventListener('click',()=>{ const csv=$('tsvPre').dataset.csv; if(!csv){flash('먼저 편성시트를 업로드하세요.');return;}
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='적립금_당첨자.csv'; a.click(); flash('CSV를 다운로드했습니다.'); });
+
+$('dlDocx').addEventListener('click',downloadDocx);
+$('copyDoc').addEventListener('click',async()=>{
+  const el=$('docBody'); if(!el.querySelector('table')){flash('먼저 편성시트를 업로드하세요.');return;}
+  const html=el.innerHTML; const text=el.innerText;
+  try{ await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]); flash('기안 표를 복사했습니다. 문서에 붙여넣기 하세요.'); }
+  catch(e){ await copyText(text); flash('기안 표(텍스트)를 복사했습니다.'); }
+});
+$('copyDocText').addEventListener('click',async()=>{ const el=$('docBody'); if(!el.querySelector('table')){flash('먼저 편성시트를 업로드하세요.');return;} await copyText(el.innerText); flash('기안 텍스트를 복사했습니다.'); });
+
+/* ---- demo autoload (localhost only, silently ignored if absent) ---- */
+if(location.search.includes('demo')){
+  fetch('sheet.b64',{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject()).then(b64=>{
+    const bin=atob(b64.trim()); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    state.fileName='8월 편성시트.xlsx(데모)'; handleBuffer(u.buffer);
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>
