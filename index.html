@@ -463,26 +463,37 @@ function renderDoc(showEp,ov){
 /* ---------- 엑셀 ---------- */
 function buildXlsRows(showEp,ov){
   const rows=[]; // {ym, date(str), time, name, w, per, tot, _sort}
-  for(const e of state.episodes){
+  // 같은 날 라이브가 2개 이상이면 같은 에피소드의 이벤트(피크타임→사전댓글)끼리 붙여서 출력한다.
+  // 에피소드 정렬 순서: 날짜 → 체크인 계열(체크인/시티/리조트) 먼저, 인트립 나중 → 편성시간 순.
+  const progPriority=p=> p==='인트립' ? 1 : 0;
+  const orderedEps=state.episodes.slice().sort((a,b)=>
+      (a.date?.getTime()||9e15)-(b.date?.getTime()||9e15)
+      || progPriority(a.program)-progPriority(b.program)
+      || a.hour-b.hour
+      || a.program.localeCompare(b.program));
+  // seq: 에피소드에 부여하는 전역 순번. 같은 에피소드의 피크타임/사전댓글이 같은 seq를 공유하므로
+  //      최종 정렬에서 항상 서로 붙게 되고, _t로 피크타임(0)→사전댓글(1) 순서가 유지된다.
+  orderedEps.forEach((e,seq)=>{
     const ym=e.date?ymOf(e.date,ov):'';
     const ds=e.date?dateShort(e.date,ov):'-';
     const nm=contentName(e,showEp);
     if(LIVE_PROGRAMS.includes(e.program)){
       rows.push({ym,date:ds,time:String(e.hour).padStart(2,'0')+':00',name:nm+' 피크타임 이벤트',owner:e.host||'',
-                 _d:e.date?e.date.getTime():9e15,_t:0,_h:e.hour});
+                 _d:e.date?e.date.getTime():9e15,_seq:seq,_t:0});
     }
     if(CONTENT_PROGRAMS.includes(e.program)){
       rows.push({ym,date:ds,time:'-',name:nm+' 사전 댓글 이벤트',owner:'Jessica',
-                 _d:e.date?e.date.getTime():9e15,_t:1,_h:e.hour});
+                 _d:e.date?e.date.getTime():9e15,_seq:seq,_t:1});
     }
-  }
+  });
   for(const p of state.promos){
     const dd=p.date?new Date(p.date+'T00:00:00Z'):null;
     const ym=dd?ymOf(dd):'';
     const ds=dd?dateShort(dd):'-';
-    rows.push({ym,date:ds,time:'-',name:p.content,owner:'',_d:dd?dd.getTime():9e15,_t:2,_h:99});
+    // 프로모(사전댓글 이벤트 표)는 같은 날의 라이브 이벤트들 뒤에 오도록 큰 seq 부여.
+    rows.push({ym,date:ds,time:'-',name:p.content,owner:'',_d:dd?dd.getTime():9e15,_seq:1e9,_t:2});
   }
-  rows.sort((a,b)=>a._d-b._d||a._t-b._t||a._h-b._h);
+  rows.sort((a,b)=>a._d-b._d||a._seq-b._seq||a._t-b._t);
   return rows;
 }
 function renderXls(showEp,ov){
