@@ -290,9 +290,10 @@ function colorToProgram(argb){
   return bestD<=40?best:null;
 }
 // 블록 구분명 셀(상품명 오른쪽, 예: check-IN Resort)로 프로그램 판별. 인식 못하면 색상으로 판별
+// 체크인 고메는 검정 블록일 때만 인정 (구분명·라이브명에 고메가 있어도 검정이 아니면 체크인)
 function labelToProgram(v){
   if(v==null) return null; const t=String(v).toLowerCase();
-  if(/gourmet/.test(t)) return '체크인 고메';
+  if(/gourmet/.test(t)) return '체크인';
   if(/resort/.test(t)) return '체크인 리조트';
   if(/city/.test(t)) return '체크인 시티';
   if(/in-?trip/.test(t)) return '인트립';
@@ -326,7 +327,8 @@ function extractEpisodes({grid,maxRow,comments}){
     for(const nc of nameCols){
       const cc=cell(row,nc); if(!cc) continue;
       const lc=cell(row,nc+1);
-      const program=labelToProgram(lc&&lc.v)||colorToProgram(cc.fill); if(!program) continue;
+      const byColor=colorToProgram(cc.fill);
+      const program=byColor==='체크인 고메'?byColor:(labelToProgram(lc&&lc.v)||byColor); if(!program) continue;
       const serial=num(dr,nc-1);
       // 해당 요일 칸에 날짜가 없으면 편성 셀이 아님 (달력 밖 셀)
       if(serial==null||serial<40000||serial>=50000) continue;
