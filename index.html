@@ -33,8 +33,6 @@
   .fileinfo{margin-top:10px;font-size:12.5px;color:var(--ink);background:#f0fdf4;border:1px solid #bbf7d0;
             border-radius:9px;padding:8px 11px;display:none}
   .fileinfo.show{display:block}
-  .epgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
-  .eprow label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin:0 0 3px;font-weight:600}
   .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
   .opt{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;color:var(--ink)}
   .opt input{width:auto}
@@ -99,20 +97,7 @@
     </div>
 
     <div class="card">
-      <h2><span class="badge">2</span> 프로그램별 시작 EP 번호</h2>
-      <div class="epgrid" id="epgrid">
-        <div class="eprow"><label><span class="dot" style="background:var(--ck)"></span>체크인</label>
-          <input type="number" id="ep_체크인" value="0" min="0"></div>
-        <div class="eprow"><label><span class="dot" style="background:var(--ckr)"></span>체크인 리조트</label>
-          <input type="number" id="ep_체크인 리조트" value="0" min="0"></div>
-        <div class="eprow"><label><span class="dot" style="background:var(--ckc)"></span>체크인 시티</label>
-          <input type="number" id="ep_체크인 시티" value="0" min="0"></div>
-        <div class="eprow"><label><span class="dot" style="background:var(--gome)"></span>체크인 고메</label>
-          <input type="number" id="ep_체크인 고메" value="0" min="0"></div>
-        <div class="eprow"><label><span class="dot" style="background:var(--intrip)"></span>인트립</label>
-          <input type="number" id="ep_인트립" value="0" min="0"></div>
-      </div>
-      <div class="opt"><input type="checkbox" id="showEp" checked><label for="showEp" style="margin:0;font-weight:600;color:var(--ink)">이벤트명에 EP 번호 표시</label></div>
+      <h2><span class="badge">2</span> 기준 연도</h2>
       <label class="f">기준 연도 (YYYY · 편성시트에서 자동 인식, 필요시 수정)</label>
       <input type="text" id="yearOverride" placeholder="예: 2026">
       <div class="mini" style="margin-top:5px">요일은 시트 13행(MON~SUN) 헤더 기준으로 계산하고, 연도는 이 값으로 맞춥니다.</div>
@@ -352,36 +337,20 @@ function resolveYear(){ const v=($('yearOverride').value||'').trim(); if(/^\d{4}
 function nfmt(n){ return n.toLocaleString('ko-KR'); }
 function progColorVar(p){ return p==='체크인'?'var(--ck)':p==='체크인 리조트'?'var(--ckr)':p==='체크인 시티'?'var(--ckc)':p==='인트립'?'var(--intrip)':'var(--gome)'; }
 
-function assignEp(){
-  const showEp=$('showEp').checked;
-  const starts={};
-  for(const p of ['체크인','체크인 리조트','체크인 시티','체크인 고메','인트립']){
-    const v=parseInt($(`ep_${p}`).value,10); starts[p]=isNaN(v)?null:v;
-  }
-  const counters={...starts};
-  // episodes already globally sorted; assign per program in order
-  for(const e of state.episodes){
-    if(counters[e.program]==null){ e.ep=null; }
-    else { e.ep=counters[e.program]; counters[e.program]++; }
-  }
-  return showEp;
-}
-function contentName(e,showEp){
+function contentName(e){
   const nm=e.name||'미정';
-  if(showEp&&e.ep!=null) return `${e.program} EP.${e.ep} ${nm}`;
   return `${e.program} ${nm}`;
 }
 
 function render(){
   const yr=resolveYear();
-  const showEp=assignEp();
-  renderDoc(showEp,yr);
-  renderXls(showEp,yr);
+  renderDoc(yr);
+  renderXls(yr);
 }
 
 /* ---------- 기안 ---------- */
 // 기안 공통 데이터 모델 (미리보기 HTML + 워드 .docx 가 동일 소스 사용)
-function buildDocModel(showEp,ov){
+function buildDocModel(ov){
   const eps=state.episodes;
   if(!eps.length && !state.promos.length) return null;
   const liveCk=eps.filter(e=>['체크인','체크인 시티','체크인 리조트'].includes(e.program));
@@ -391,8 +360,8 @@ function buildDocModel(showEp,ov){
     ? (()=>{const[a,b]=state.declaredYM.split('-');return `${a}년 ${+b}월`;})()
     : (()=>{const f=eps.find(e=>e.date);return f?`${ov||f.date.getUTCFullYear()}년 ${f.date.getUTCMonth()+1}월`:'';})();
   const when=e=>(e.date?dateKo(e.date,ov):'-')+' '+timeKo(e.hour);
-  const liveRow=e=>({cells:[when(e), contentName(e,showEp), e.name?'14F Lounge':'-'], prog:e.program});
-  const contentRow=e=>({cells:[when(e), contentName(e,showEp)], prog:e.program});
+  const liveRow=e=>({cells:[when(e), contentName(e), e.name?'14F Lounge':'-'], prog:e.program});
+  const contentRow=e=>({cells:[when(e), contentName(e)], prog:e.program});
 
   const promoGroups=[], gmap={};
   state.promos.forEach(p=>{ if(!gmap[p.category]){ gmap[p.category]={category:p.category,items:[]}; promoGroups.push(gmap[p.category]); } gmap[p.category].items.push(p); });
@@ -451,8 +420,8 @@ function docModelToHtml(model){
   return html+'</div>';
 }
 
-function renderDoc(showEp,ov){
-  const model=buildDocModel(showEp,ov);
+function renderDoc(ov){
+  const model=buildDocModel(ov);
   state.docModel=model;
   if(!model){ $('docBody').innerHTML='<div class="empty">편성시트를 업로드하면 기안 표가 생성됩니다.</div>'; return; }
   let html=docModelToHtml(model);
@@ -461,7 +430,7 @@ function renderDoc(showEp,ov){
 }
 
 /* ---------- 엑셀 ---------- */
-function buildXlsRows(showEp,ov){
+function buildXlsRows(ov){
   const rows=[]; // {ym, date(str), time, name, w, per, tot, _sort}
   // 같은 날 라이브가 2개 이상이면 같은 에피소드의 이벤트(피크타임→사전댓글)끼리 붙여서 출력한다.
   // 에피소드 정렬 순서: 날짜 → 체크인 계열(체크인/시티/리조트) 먼저, 인트립 나중 → 편성시간 순.
@@ -476,7 +445,7 @@ function buildXlsRows(showEp,ov){
   orderedEps.forEach((e,seq)=>{
     const ym=e.date?ymOf(e.date,ov):'';
     const ds=e.date?dateShort(e.date,ov):'-';
-    const nm=contentName(e,showEp);
+    const nm=contentName(e);
     if(LIVE_PROGRAMS.includes(e.program)){
       rows.push({ym,date:ds,time:String(e.hour).padStart(2,'0')+':00',name:nm+' 피크타임 이벤트',owner:e.host||'',
                  _d:e.date?e.date.getTime():9e15,_seq:seq,_t:0});
@@ -496,8 +465,8 @@ function buildXlsRows(showEp,ov){
   rows.sort((a,b)=>a._d-b._d||a._seq-b._seq||a._t-b._t);
   return rows;
 }
-function renderXls(showEp,ov){
-  const rows=buildXlsRows(showEp,ov);
+function renderXls(ov){
+  const rows=buildXlsRows(ov);
   if(!rows.length){ $('xlsBody').innerHTML='<div class="empty">편성시트를 업로드하면 당첨자 엑셀 표가 생성됩니다.</div>'; $('tsvPre').textContent=''; return; }
   let html=`<table class="g"><tr><th>지급대상월</th><th>편성일</th><th>편성 시간</th><th>이벤트명</th><th>대상인원</th><th>인당 지급액</th><th>지급 총액</th><th>담당자</th></tr>`;
   for(const r of rows){
@@ -617,7 +586,7 @@ fileInput.addEventListener('change',e=>readFile(e.target.files[0]));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
 drop.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) readFile(f); });
 
-['ep_체크인','ep_체크인 리조트','ep_체크인 시티','ep_체크인 고메','ep_인트립','showEp','yearOverride']
+['yearOverride']
   .forEach(id=>{ const el=$(id); el.addEventListener('input',render); el.addEventListener('change',render); });
 
 $('p_add').addEventListener('click',()=>{
