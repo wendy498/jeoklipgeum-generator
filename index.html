@@ -299,15 +299,21 @@ function extractEpisodes({grid,maxRow,comments}){
     const b=num(r,2); if(b!=null&&b>0&&b<1) timeRows.push({row:r,hour:Math.round(b*24)});
     const c=num(r,3); if(c!=null&&c>=40000&&c<50000) dateRows.push(r);
   }
+  // 마지막 주 블록 아래(범례·담당자 표 등)는 편성이 아니므로, 주 블록 높이를 넘어서는 행은 제외
+  let span=0; for(let i=1;i<dateRows.length;i++) span=Math.max(span,dateRows[i]-dateRows[i-1]);
   const episodes=[];
   for(const{row,hour} of timeRows){
     if(hour===12) continue;
     let dr=null; for(const d of dateRows){ if(d<=row) dr=d; }
     if(dr==null) continue;
+    if(span&&dr===dateRows[dateRows.length-1]&&row-dr>=span) continue;
     for(const nc of NAME_COLS){
       const cc=cell(row,nc); if(!cc) continue;
       const program=colorToProgram(cc.fill); if(!program) continue;
-      const serial=num(dr,nc-1); const date=serial!=null?serialToDate(serial):null;
+      const serial=num(dr,nc-1);
+      // 해당 요일 칸에 날짜가 없으면 편성 셀이 아님 (달력 밖 셀)
+      if(serial==null||serial<40000||serial>=50000) continue;
+      const date=serialToDate(serial);
       let name=(cc.v==null)?null:String(cc.v).replace(/\s*\n\s*/g,' ').trim(); if(name==='') name=null;
       // 셀 텍스트가 "프로그램명 - 상품명" 형태면 프로그램명 접두어 제거 (예: 체크인 고메 - 웨스틴 조선 서울)
       if(name && name.startsWith(program)){ name=name.slice(program.length).replace(/^[\s\-–—:_]+/,'').trim()||null; }
